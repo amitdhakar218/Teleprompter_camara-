@@ -47,7 +47,18 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // Prompter settings and script state
-  const [prompterSettings, setPrompterSettings] = useState<PrompterSettings>(DEFAULT_SETTINGS);
+  const [prompterSettings, setPrompterSettings] = useState<PrompterSettings>(() => {
+    try {
+      const stored = localStorage.getItem('teleprompter_custom_settings');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return { ...DEFAULT_SETTINGS, ...parsed, mirrorHorizontal: false };
+      }
+    } catch (e) {
+      // fallback
+    }
+    return DEFAULT_SETTINGS;
+  });
   const [currentScript, setCurrentScript] = useState<string>(DEFAULT_SCRIPTS[0].content);
   const [savedScripts, setSavedScripts] = useState<ScriptItem[]>(() => {
     try {
@@ -316,7 +327,7 @@ export default function App() {
         <div className="flex items-center gap-2">
           <span className="text-base md:text-lg font-bold tracking-tight text-white flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
-            Teleprompter Studio
+            Teleprompter Studio <span className="text-xs font-normal text-rose-400 hidden sm:inline">| अमित धाकड़</span>
           </span>
         </div>
 

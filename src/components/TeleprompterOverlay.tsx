@@ -119,7 +119,8 @@ export const TeleprompterOverlay: React.FC<TeleprompterOverlayProps> = ({
         {/* The Text Content - Crystal clear, zero background container */}
         <div
           ref={textRef}
-          className={`font-semibold tracking-normal text-shadow-heavy select-none transition-all duration-75 cursor-grab active:cursor-grabbing ${
+          dir="ltr"
+          className={`font-semibold tracking-normal text-shadow-heavy select-none transition-all duration-75 cursor-grab active:cursor-grabbing font-sans ${
             settings.textAlign === 'center'
               ? 'text-center'
               : settings.textAlign === 'right'
@@ -131,6 +132,8 @@ export const TeleprompterOverlay: React.FC<TeleprompterOverlayProps> = ({
             fontSize: `${settings.fontSize}px`,
             lineHeight: settings.lineHeight,
             color: settings.textColor,
+            direction: 'ltr',
+            unicodeBidi: 'isolate'
           }}
         >
           {script.split('\n').map((paragraph, idx) => {

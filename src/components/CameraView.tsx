@@ -44,21 +44,48 @@ export const CameraView: React.FC<CameraViewProps> = ({
         stream.getTracks().forEach(track => track.stop());
       }
 
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
-        },
-        audio: true
-      };
+      // First check if mediaDevices is supported (in some in-app webviews or insecure origins it may be undefined)
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setErrorMsg(
+          language === 'hi'
+            ? 'आपके ब्राउज़र में कैमरा API उपलब्ध नहीं है। कृपया Chrome/Firefox में सुरक्षित HTTPS URL खोलें।'
+            : 'Camera API not supported in this browser. Please use Chrome/Firefox over HTTPS.'
+        );
+        onStreamReady(null);
+        return;
+      }
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      let mediaStream: MediaStream;
+
+      // Try video + audio first, if mic fails fallback to video only
+      try {
+        const constraints: MediaStreamConstraints = {
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1920, min: 640 },
+            height: { ideal: 1080, min: 480 },
+          },
+          audio: true
+        };
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (audioVideoErr: any) {
+        console.warn('Audio+Video failed, trying video only:', audioVideoErr);
+        // Fallback to video only in case microphone permission was blocked
+        const videoOnlyConstraints: MediaStreamConstraints = {
+          video: {
+            facingMode: { ideal: facingMode },
+          },
+          audio: false
+        };
+        mediaStream = await navigator.mediaDevices.getUserMedia(videoOnlyConstraints);
+      }
+
       setStream(mediaStream);
       onStreamReady(mediaStream);
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        videoRef.current.play().catch(() => {});
       }
 
       // Check hardware zoom capabilities
@@ -79,31 +106,34 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
       // Audio meter analyzer
       try {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContextClass) {
-          const audioCtx = new AudioContextClass();
-          audioContextRef.current = audioCtx;
-          const analyser = audioCtx.createAnalyser();
-          analyser.fftSize = 64;
-          analyserRef.current = analyser;
+        const audioTracks = mediaStream.getAudioTracks();
+        if (audioTracks.length > 0) {
+          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioContextClass) {
+            const audioCtx = new AudioContextClass();
+            audioContextRef.current = audioCtx;
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 64;
+            analyserRef.current = analyser;
 
-          const source = audioCtx.createMediaStreamSource(mediaStream);
-          source.connect(analyser);
+            const source = audioCtx.createMediaStreamSource(mediaStream);
+            source.connect(analyser);
 
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          const updateAudioMeter = () => {
-            if (analyserRef.current) {
-              analyserRef.current.getByteFrequencyData(dataArray);
-              let sum = 0;
-              for (let i = 0; i < dataArray.length; i++) {
-                sum += dataArray[i];
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            const updateAudioMeter = () => {
+              if (analyserRef.current) {
+                analyserRef.current.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                  sum += dataArray[i];
+                }
+                const average = sum / dataArray.length;
+                setAudioLevel(Math.min(100, Math.round((average / 128) * 100)));
               }
-              const average = sum / dataArray.length;
-              setAudioLevel(Math.min(100, Math.round((average / 128) * 100)));
-            }
-            animFrameRef.current = requestAnimationFrame(updateAudioMeter);
-          };
-          updateAudioMeter();
+              animFrameRef.current = requestAnimationFrame(updateAudioMeter);
+            };
+            updateAudioMeter();
+          }
         }
       } catch (e) {
         console.warn('Audio meter init error', e);
@@ -112,12 +142,12 @@ export const CameraView: React.FC<CameraViewProps> = ({
     } catch (err: any) {
       console.error('Camera access error:', err);
       let message = language === 'hi' 
-        ? 'कैमरा या माइक्रोफोन तक पहुँचने में समस्या। कृपया ब्राउज़र परमिशन चेक करें।'
-        : 'Could not access camera/microphone. Please ensure permissions are granted.';
-      if (err.name === 'NotAllowedError') {
+        ? 'कैमरा या माइक्रोफोन परमिशन की अनुमति दें ताकि लाइव वीडियो दिखे।'
+        : 'Please allow camera and microphone permissions.';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         message = language === 'hi'
-          ? 'कैमरा परमिशन अस्वीकृत है। कृपया ब्राउज़र सेटिंग्स में कैमरा व माइक की अनुमति दें।'
-          : 'Camera permission was denied. Please allow access in browser site settings.';
+          ? 'कैमरा परमिशन अस्वीकृत है। कृपया ब्राउज़र के URL बार में ताला (Lock 🔒) या सेटिंग्स आइकन दबाकर कैमरा की अनुमति Allow करें।'
+          : 'Camera permission was denied. Tap the Lock icon 🔒 in browser to allow camera.';
       }
       setErrorMsg(message);
       onStreamReady(null);

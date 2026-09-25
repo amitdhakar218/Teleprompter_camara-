@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@layer base {
+  body, html {
+    font-family: 'Noto Sans Devanagari', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+}
+
 @layer utilities {
   .text-shadow-prompter {
     text-shadow: 

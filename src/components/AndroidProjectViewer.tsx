@@ -42,14 +42,16 @@ export const AndroidProjectViewer: React.FC<AndroidProjectViewerProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const termuxCommand = `cat << 'EOF' > .github/workflows/build-apk.yml
+  const termuxCommand = `git fetch origin
+git pull --rebase origin main
+
+cat << 'EOF' > .github/workflows/build-apk.yml
 name: Build Android APK
 
 on:
   push:
     branches:
       - main
-      - master
   workflow_dispatch:
 
 jobs:
@@ -61,75 +63,56 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Setup Node (if package.json exists for Capacitor apps)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Build Web Assets (If Capacitor/Node exists)
-        run: |
-          if [ -f "package.json" ]; then
-            echo "Building web project..."
-            npm install --legacy-peer-deps || true
-            npm run build --if-present || true
-            if [ -f "capacitor.config.json" -o -f "capacitor.config.ts" ]; then
-              npx cap sync android || true
-            fi
-          fi
+      - name: Install NPM Dependencies
+        run: npm install --legacy-peer-deps
 
-      # 2. Setup Java 17
-      - name: Set up JDK 17
+      - name: Build Web Assets
+        run: npm run build
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
-      # 3. Accept all Android SDK Licenses
-      - name: Accept Android SDK Licenses
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant execute permission for gradlew
+        working-directory: ./android
         run: |
-          yes | sdkmanager --licenses || true
+          sed -i 's/\\r$//' gradlew || true
+          chmod +x gradlew
 
-      # 4. Build Debug APK with Gradle
-      - name: Build Debug APK with Gradle
-        run: |
-          # Check whether Android files are at root or in ./android directory
-          if [ -d "android" ] && [ -f "android/build.gradle" -o -f "android/build.gradle.kts" ]; then
-            echo "Entering android directory..."
-            cd android
-          fi
+      - name: Build Debug APK
+        working-directory: ./android
+        run: ./gradlew assembleDebug --stacktrace
 
-          # Fix gradlew permissions and CRLF line breaks
-          if [ -f "gradlew" ]; then
-            sed -i 's/\\r$//' gradlew || true
-            chmod +x gradlew
-          else
-            echo "Generating gradlew wrapper..."
-            gradle wrapper --gradle-version 8.4
-            chmod +x gradlew
-          fi
-
-          # Replace incompatible gradle-8.14 with stable gradle-8.4 in wrapper properties if present
-          if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
-            sed -i 's/gradle-8.14[^"]*/gradle-8.4-bin.zip/g' gradle/wrapper/gradle-wrapper.properties || true
-          fi
-
-          echo "Starting Gradle assembleDebug..."
-          ./gradlew assembleDebug --no-daemon --stacktrace
-
-      # 5. Upload APK to Artifacts for direct phone download
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Teleprompter-Camera-Debug-APK
           path: |
-            **/build/outputs/apk/debug/*.apk
-            **/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/**/*.apk
           retention-days: 30
 EOF
 
-git add .github/workflows/build-apk.yml
-git commit -m "Fix Android APK workflow with auto-detect and stable Gradle"
+sed -i 's/gradle-8.14[^"]*/gradle-8.11.1-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
+sed -i "s/classpath 'com.android.tools.build:gradle:8.13.0'/classpath 'com.android.tools.build:gradle:8.7.3'/g" android/build.gradle || true
+sed -i 's/compileSdkVersion = 36/compileSdkVersion = 35/g' android/variables.gradle || true
+sed -i 's/targetSdkVersion = 36/targetSdkVersion = 35/g' android/variables.gradle || true
+
+git add .
+git commit -m "Auto sync from Teleprompter Studio by Amit Dhakar" || true
 git push origin main`;
 
   const handleCopyTermux = () => {
