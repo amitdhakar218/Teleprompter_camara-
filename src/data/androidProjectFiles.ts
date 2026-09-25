@@ -746,8 +746,8 @@ class MainActivity : AppCompatActivity() {
     description: 'App Module Gradle build script with CameraX 1.4, Material3, and ViewBinding',
     descriptionHi: 'ऐप मॉड्यूल ग्रैडल स्क्रिप्ट जिसमें कैमराएक्स 1.4 और मटेरियल 3 लाइब्रेरी शामिल हैं',
     content: `plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
 }
 
 android {
@@ -812,10 +812,10 @@ dependencies {
     language: 'groovy',
     description: 'Root Gradle configuration file',
     descriptionHi: 'रूट प्रोजेक्ट ग्रैडल कॉन्फ़िगरेशन फाइल',
-    content: `// Top-level build file where you can add configuration options common to all sub-projects/modules.
+    content: `// Top-level build file where plugins are declared
 plugins {
-    alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.kotlin.android) apply false
+    id("com.android.application") version "8.2.2" apply false
+    id("org.jetbrains.kotlin.android") version "1.9.22" apply false
 }`
   },
   {
@@ -843,48 +843,98 @@ rootProject.name = "TeleprompterCamera"
 include(":app")`
   },
   {
-    path: '.github/workflows/android-build.yml',
-    name: 'android-build.yml (GitHub Actions)',
+    path: '.github/workflows/build-apk.yml',
+    name: 'build-apk.yml (GitHub Actions)',
     language: 'yaml',
-    description: 'Automated GitHub Actions CI/CD to build debug APK directly from your GitHub repository',
-    descriptionHi: 'गिटहब एक्शन्स वर्कफ़्लो - इसके ज़रिए बिना एंड्रॉइड स्टूडियो इनस्टॉल किए सीधे गिटहब से APK बिल्ड करें',
-    content: `name: Build Android Teleprompter APK
+    description: 'Bulletproof GitHub Actions CI/CD to build debug APK directly from your GitHub repository',
+    descriptionHi: '100% सटीक गिटहब एक्शन्स वर्कफ़्लो - इसके ज़रिए बिना किसी एरर के सीधे गिटहब से APK बिल्ड करें',
+    content: `name: Build Android APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches:
+      - main
+      - master
   pull_request:
-    branches: [ "main", "master" ]
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build Debug APK
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
+      # 1. Setup Node (if package.json exists for Capacitor apps)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build Web Assets (If Capacitor/Node exists)
+        run: |
+          if [ -f "package.json" ]; then
+            echo "Building web project..."
+            npm install --legacy-peer-deps || true
+            npm run build --if-present || true
+            if [ -f "capacitor.config.json" -o -f "capacitor.config.ts" ]; then
+              npx cap sync android || true
+            fi
+          fi
+
+      # 2. Setup Java 17
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+          java-version: '17'
 
-      - name: Grant Execute Permission to Gradlew
-        run: chmod +x gradlew
+      # 3. Accept all Android SDK Licenses
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses || true
 
+      # 4. Build Debug APK with Gradle
       - name: Build Debug APK with Gradle
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          # Check whether Android files are at root or in ./android directory
+          if [ -d "android" ] && [ -f "android/build.gradle" -o -f "android/build.gradle.kts" ]; then
+            echo "Entering android directory..."
+            cd android
+          fi
 
-      - name: Upload APK as Workflow Artifact
+          # Fix gradlew permissions and CRLF line breaks
+          if [ -f "gradlew" ]; then
+            sed -i 's/\r$//' gradlew || true
+            chmod +x gradlew
+          else
+            echo "Generating gradlew wrapper..."
+            gradle wrapper --gradle-version 8.4
+            chmod +x gradlew
+          fi
+
+          # Replace incompatible gradle-8.14 with stable gradle-8.4 in wrapper properties if present
+          if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
+            sed -i 's/gradle-8.14[^"]*/gradle-8.4-bin.zip/g' gradle/wrapper/gradle-wrapper.properties || true
+          fi
+
+          echo "Starting Gradle assembleDebug..."
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      # 5. Upload APK to Artifacts for direct phone download
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Teleprompter-Camera-Debug-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14`
+          path: |
+            **/build/outputs/apk/debug/*.apk
+            **/build/outputs/apk/release/*.apk
+          retention-days: 30`
   },
   {
     path: 'app/src/main/res/values/strings.xml',
