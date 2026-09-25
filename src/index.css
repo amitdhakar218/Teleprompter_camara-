@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .text-shadow-prompter {
+    text-shadow: 
+      0 2px 4px rgba(0, 0, 0, 0.95),
+      0 0 10px rgba(0, 0, 0, 0.8),
+      -1px -1px 0 rgba(0, 0, 0, 0.9),
+      1px -1px 0 rgba(0, 0, 0, 0.9),
+      -1px 1px 0 rgba(0, 0, 0, 0.9),
+      1px 1px 0 rgba(0, 0, 0, 0.9);
+  }
+  .text-shadow-heavy {
+    text-shadow: 
+      -2px -2px 0 #000,
+      2px -2px 0 #000,
+      -2px 2px 0 #000,
+      2px 2px 0 #000,
+      0 4px 12px rgba(0,0,0,0.95);
+  }
+}
+
+/* Custom scrollbar hiding for teleprompter HUD */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Subtle scanline and guide animation */
+@keyframes eyeGuidePulse {
+  0%, 100% { opacity: 0.35; transform: scaleX(0.98); }
+  50% { opacity: 0.75; transform: scaleX(1); }
+}
+
+.animate-guide-pulse {
+  animation: eyeGuidePulse 3s ease-in-out infinite;
+}

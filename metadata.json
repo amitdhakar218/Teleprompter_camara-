@@ -1,0 +1,11 @@
+{
+  "name": "Teleprompter Camera Studio & Android Project Exporter",
+  "description": "Full-screen HD camera with transparent auto-scrolling teleprompter, zoom, pause/resume, watermark-free video recording, plus complete Android Studio Kotlin project and GitHub Actions APK workflow.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
