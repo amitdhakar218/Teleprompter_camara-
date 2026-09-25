@@ -8,60 +8,45 @@ on:
 
 jobs:
   build:
-    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install NPM Dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci || npm install --legacy-peer-deps
 
       - name: Build Web Assets
-        run: npm run build
+        run: npm run build --if-present
 
       - name: Sync Capacitor Android
         run: npx cap sync android
 
-      - name: Set up JDK 21
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '17'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Accept Android SDK Licenses
-        run: yes | sdkmanager --licenses || true
-
       - name: Grant execute permission for gradlew
         working-directory: ./android
-        run: |
-          sed -i 's/\r$//' gradlew || true
-          chmod +x gradlew
+        run: chmod +x gradlew
 
       - name: Build Debug APK
         working-directory: ./android
-        run: |
-          ./gradlew assembleDebug --stacktrace --no-daemon || {
-            echo "::warning::Standard gradlew failed, re-generating wrapper and retrying..."
-            gradle wrapper --gradle-version 8.11.1
-            chmod +x gradlew
-            ./gradlew assembleDebug --stacktrace --no-daemon
-          }
+        run: ./gradlew assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Teleprompter-Camera-Debug-APK
-          path: |
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/apk/**/*.apk
-          retention-days: 30
+          path: android/app/build/outputs/apk/debug/app-debug.apk
