@@ -34,6 +34,20 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Setup Android SDK 36
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '12.0'
+          accept-android-sdk-licenses: true
+          packages: 'platforms;android-36 build-tools;36.0.0'
+
+      - name: Upgrade compileSdk to 36
+        working-directory: ./android
+        run: |
+          sed -i 's/compileSdkVersion = 35/compileSdkVersion = 36/g' variables.gradle || true
+          sed -i 's/targetSdkVersion = 35/targetSdkVersion = 36/g' variables.gradle || true
+          sed -i 's/compileSdk 35/compileSdk 36/g' app/build.gradle || true
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
@@ -43,10 +57,11 @@ jobs:
 
       - name: Build Debug APK
         working-directory: ./android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Teleprompter-Camera-Debug-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
