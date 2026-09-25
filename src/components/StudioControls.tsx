@@ -5,10 +5,10 @@ import {
   Square, 
   FileText, 
   Settings, 
-  Code, 
   Sliders,
   Volume2,
-  FolderOpen
+  FolderOpen,
+  RefreshCw
 } from 'lucide-react';
 import { RecordingStatus, PrompterSettings } from '../types';
 
@@ -22,9 +22,10 @@ interface StudioControlsProps {
   onUpdatePrompterSettings: (partial: Partial<PrompterSettings>) => void;
   zoomLevel: number;
   onZoomChange: (zoom: number) => void;
+  onFacingModeToggle: () => void;
+  facingMode: 'user' | 'environment';
   onOpenScriptModal: () => void;
   onOpenSettingsModal: () => void;
-  onOpenAndroidModal: () => void;
   onOpenGalleryModal: () => void;
   language: 'hi' | 'en';
 }
@@ -39,9 +40,10 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
   onUpdatePrompterSettings,
   zoomLevel,
   onZoomChange,
+  onFacingModeToggle,
+  facingMode,
   onOpenScriptModal,
   onOpenSettingsModal,
-  onOpenAndroidModal,
   onOpenGalleryModal,
   language,
 }) => {
@@ -55,48 +57,50 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
   const isRecordingOrPaused = recordingStatus === 'recording' || recordingStatus === 'paused';
 
   return (
-    <div className="w-full flex flex-col items-center justify-end p-4 md:p-6 pointer-events-auto z-20">
+    <div className="w-full flex flex-col items-center justify-end p-2 md:p-6 pointer-events-auto z-20">
       {/* Top Floating Control Capsule: Speed + Zoom + Status */}
-      <div className="w-full max-w-xl bg-slate-900/85 backdrop-blur-xl border border-white/10 rounded-2xl p-3 md:p-4 shadow-2xl mb-3 flex flex-col gap-3">
+      <div className="w-full max-w-xl bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 md:p-3 shadow-2xl mb-2.5 flex flex-col gap-2">
         {/* Row 1: Speed Slider & Zoom Quick Selectors */}
-        <div className="flex items-center justify-between gap-4 text-xs">
+        <div className="flex items-center justify-between gap-3 text-xs">
           {/* Prompter Speed Control */}
           <div className="flex-1 flex items-center gap-2">
-            <span className="text-slate-300 font-medium whitespace-nowrap shrink-0 flex items-center gap-1">
+            <span className="text-slate-300 font-medium whitespace-nowrap shrink-0 flex items-center gap-1 text-[11px]">
               <Sliders className="w-3.5 h-3.5 text-rose-400" />
-              {language === 'hi' ? 'स्क्रॉल गति (Speed):' : 'Scroll Speed:'}
+              {language === 'hi' ? 'स्पीड:' : 'Speed:'}
             </span>
             <input
               type="range"
-              min="1"
-              max="10"
-              step="0.5"
+              min="0.8"
+              max="7.0"
+              step="0.2"
               value={prompterSettings.scrollSpeed}
               onChange={(e) =>
                 onUpdatePrompterSettings({ scrollSpeed: parseFloat(e.target.value) })
               }
               className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
             />
-            <span className="text-white font-mono font-semibold tabular-nums min-w-[32px] text-right">
+            <span className="text-white font-mono font-semibold tabular-nums min-w-[32px] text-right text-[11px]">
               {prompterSettings.scrollSpeed.toFixed(1)}x
             </span>
           </div>
 
           <div className="h-4 w-px bg-white/10 shrink-0" />
 
-          {/* Quick Zoom Buttons */}
+          {/* Quick Zoom Buttons including 0.7x wide angle */}
           <div className="flex items-center gap-1 shrink-0">
-            {[1, 1.5, 2, 3].map((level) => (
+            <span className="text-[10px] text-slate-400 hidden sm:inline mr-0.5">Zoom:</span>
+            {[0.7, 1, 1.5, 2].map((level) => (
               <button
                 key={level}
                 onClick={() => onZoomChange(level)}
                 className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer ${
-                  Math.abs(zoomLevel - level) < 0.1
+                  Math.abs(zoomLevel - level) < 0.05
                     ? 'bg-rose-600 text-white font-bold'
                     : 'bg-white/5 hover:bg-white/15 text-slate-300'
                 }`}
+                title={level === 0.7 ? '0.7x Wide (फुल बॉडी)' : `${level}x Zoom`}
               >
-                {level}x
+                {level === 0.7 ? '0.7x Wide' : `${level}x`}
               </button>
             ))}
           </div>
@@ -113,7 +117,7 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
                     : 'bg-amber-400'
                 }`}
               />
-              <span className="text-xs font-medium uppercase tracking-wide text-slate-200">
+              <span className="text-xs font-semibold text-white">
                 {recordingStatus === 'recording'
                   ? (language === 'hi' ? 'लाइव रिकॉर्डिंग' : 'Recording Live')
                   : (language === 'hi' ? 'रिकॉर्डिंग पॉज़ है' : 'Recording Paused')}
@@ -125,67 +129,65 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
             </div>
 
             <div className="text-[11px] text-slate-400">
-              {language === 'hi' ? 'ओरिजिनल 1080p (नो वॉटरमार्क)' : 'No Watermark Clean'}
+              {prompterSettings.aspectRatio} · {prompterSettings.videoResolution}
             </div>
           </div>
         )}
       </div>
 
-      {/* Main Bottom Deck: Scripts / Record & Pause / Settings / Android Project */}
-      <div className="w-full max-w-xl flex items-center justify-between gap-3 px-2">
-        {/* Left Side: Script Editor & Video Gallery Trigger */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onOpenScriptModal}
-            disabled={recordingStatus === 'recording'}
-            className="flex flex-col items-center gap-1 text-slate-300 hover:text-white disabled:opacity-40 transition-colors p-2 rounded-xl hover:bg-white/5 cursor-pointer"
-            title={language === 'hi' ? 'स्क्रिप्ट बदलें / नया टेक्स्ट डालें' : 'Edit Script / Paste Text'}
-          >
-            <div className="w-10 h-10 rounded-full bg-slate-800/90 border border-white/10 flex items-center justify-center">
-              <FileText className="w-4 h-4 text-slate-200" />
-            </div>
-            <span className="text-[11px] font-medium tracking-tight">
-              {language === 'hi' ? 'स्क्रिप्ट' : 'Script'}
-            </span>
-          </button>
+      {/* Main Bottom Deck: Script / Camera Flip / Record / Library / Settings */}
+      <div className="w-full max-w-xl flex items-center justify-between gap-2 px-3 py-2 bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl">
+        {/* 1. Script Editor */}
+        <button
+          onClick={onOpenScriptModal}
+          disabled={recordingStatus === 'recording'}
+          className="flex flex-col items-center gap-1 text-slate-300 hover:text-white disabled:opacity-40 transition-colors p-1.5 rounded-xl hover:bg-white/5 cursor-pointer"
+          title={language === 'hi' ? 'स्क्रिप्ट बदलें / नया टेक्स्ट डालें' : 'Edit Script / Paste Text'}
+        >
+          <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center">
+            <FileText className="w-4 h-4 text-slate-200" />
+          </div>
+          <span className="text-[11px] font-medium tracking-tight">
+            {language === 'hi' ? 'स्क्रिप्ट' : 'Script'}
+          </span>
+        </button>
 
-          {/* Video Library / Gallery */}
-          <button
-            onClick={onOpenGalleryModal}
-            disabled={recordingStatus === 'recording'}
-            className="flex flex-col items-center gap-1 text-rose-400 hover:text-rose-300 disabled:opacity-40 transition-colors p-2 rounded-xl hover:bg-white/5 cursor-pointer"
-            title={language === 'hi' ? 'मेरी रिकॉर्डिंग्स (गैलरी स्टोरेज)' : 'Recorded Videos Gallery'}
-          >
-            <div className="w-10 h-10 rounded-full bg-rose-950/70 border border-rose-500/30 flex items-center justify-center">
-              <FolderOpen className="w-4 h-4 text-rose-400" />
-            </div>
-            <span className="text-[11px] font-medium tracking-tight">
-              {language === 'hi' ? 'गैलरी' : 'Gallery'}
-            </span>
-          </button>
-        </div>
+        {/* 2. Switch Front / Back Camera */}
+        <button
+          onClick={onFacingModeToggle}
+          disabled={recordingStatus === 'recording'}
+          className="flex flex-col items-center gap-1 text-slate-300 hover:text-white disabled:opacity-40 transition-colors p-1.5 rounded-xl hover:bg-white/5 cursor-pointer"
+          title={language === 'hi' ? 'फ्रंट / बैक कैमरा बदलें' : 'Switch Front/Back Camera'}
+        >
+          <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center">
+            <RefreshCw className="w-4 h-4 text-slate-200" />
+          </div>
+          <span className="text-[11px] font-medium tracking-tight">
+            {facingMode === 'user' ? (language === 'hi' ? 'फ्रंट' : 'Front') : (language === 'hi' ? 'बैक' : 'Back')}
+          </span>
+        </button>
 
-        {/* Center: Record / Pause / Stop Group */}
-        <div className="flex items-center gap-4">
-          {/* Pause / Resume Button (Visible during recording) */}
+        {/* 3. Center: Record / Pause / Stop */}
+        <div className="flex items-center gap-3">
+          {/* Pause / Resume Button */}
           {isRecordingOrPaused && (
             <button
               onClick={onPauseResumeRecording}
-              className={`w-12 h-12 rounded-full border border-white/20 flex items-center justify-center transition-all active:scale-95 shadow-lg cursor-pointer ${
+              className={`w-11 h-11 rounded-full border border-white/20 flex items-center justify-center transition-all active:scale-95 shadow-lg cursor-pointer ${
                 recordingStatus === 'paused'
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
                   : 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold'
               }`}
               title={
                 recordingStatus === 'paused'
-                  ? (language === 'hi' ? 'रिकॉर्डिंग जारी रखें (Resume)' : 'Resume Recording')
-                  : (language === 'hi' ? 'रिकॉर्डिंग पॉज़ करें (Pause)' : 'Pause Recording')
+                  ? (language === 'hi' ? 'जारी रखें' : 'Resume')
+                  : (language === 'hi' ? 'पॉज़ करें' : 'Pause')
               }
             >
               {recordingStatus === 'paused' ? (
-                <Play className="w-5 h-5 ml-0.5 fill-current" />
+                <Play className="w-4 h-4 ml-0.5 fill-current" />
               ) : (
-                <Pause className="w-5 h-5 fill-current" />
+                <Pause className="w-4 h-4 fill-current" />
               )}
             </button>
           )}
@@ -212,36 +214,34 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
           )}
         </div>
 
-        {/* Right Side: Settings & Android Code */}
-        <div className="flex items-center gap-1">
-          {/* Prompter Visual Settings */}
-          <button
-            onClick={onOpenSettingsModal}
-            className="flex flex-col items-center gap-1 text-slate-300 hover:text-white transition-colors p-2 rounded-xl hover:bg-white/5 cursor-pointer"
-            title={language === 'hi' ? 'टेक्स्ट का रंग, आकार व डिस्प्ले सेटिंग्स' : 'Text size, color, display settings'}
-          >
-            <div className="w-10 h-10 rounded-full bg-slate-800/90 border border-white/10 flex items-center justify-center">
-              <Settings className="w-4 h-4 text-slate-200" />
-            </div>
-            <span className="text-[11px] font-medium tracking-tight">
-              {language === 'hi' ? 'सेटिंग्स' : 'Display'}
-            </span>
-          </button>
+        {/* 4. Library (All saved videos) */}
+        <button
+          onClick={onOpenGalleryModal}
+          disabled={recordingStatus === 'recording'}
+          className="flex flex-col items-center gap-1 text-emerald-400 hover:text-emerald-300 disabled:opacity-40 transition-colors p-1.5 rounded-xl hover:bg-white/5 cursor-pointer"
+          title={language === 'hi' ? 'मेरी लाइब्रेरी (रिकॉर्डेड वीडियोज़)' : 'My Library (Recorded Videos)'}
+        >
+          <div className="w-10 h-10 rounded-full bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center">
+            <FolderOpen className="w-4 h-4 text-emerald-400" />
+          </div>
+          <span className="text-[11px] font-medium tracking-tight text-emerald-300 font-semibold">
+            {language === 'hi' ? 'लाइब्रेरी' : 'Library'}
+          </span>
+        </button>
 
-          {/* Android Kotlin Code & APK Workflow Viewer */}
-          <button
-            onClick={onOpenAndroidModal}
-            className="flex flex-col items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors p-2 rounded-xl hover:bg-white/5 cursor-pointer"
-            title={language === 'hi' ? 'Android Studio प्रोजेक्ट कोड व GitHub Actions APK बिल्डर' : 'Android Kotlin code & GitHub Actions APK builder'}
-          >
-            <div className="w-10 h-10 rounded-full bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center">
-              <Code className="w-4 h-4 text-emerald-400" />
-            </div>
-            <span className="text-[11px] font-medium tracking-tight text-emerald-300">
-              {language === 'hi' ? 'Android कोड' : 'Android APK'}
-            </span>
-          </button>
-        </div>
+        {/* 5. Prompter & Camera Settings */}
+        <button
+          onClick={onOpenSettingsModal}
+          className="flex flex-col items-center gap-1 text-slate-300 hover:text-white transition-colors p-1.5 rounded-xl hover:bg-white/5 cursor-pointer"
+          title={language === 'hi' ? 'सेटिंग्स (साइज, स्पीड, रंग)' : 'Settings (Size, Speed, Resolution)'}
+        >
+          <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center">
+            <Settings className="w-4 h-4 text-slate-200" />
+          </div>
+          <span className="text-[11px] font-medium tracking-tight">
+            {language === 'hi' ? 'सेटिंग्स' : 'Settings'}
+          </span>
+        </button>
       </div>
     </div>
   );

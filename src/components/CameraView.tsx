@@ -11,6 +11,9 @@ interface CameraViewProps {
   onStreamReady: (stream: MediaStream | null) => void;
   isMuted: boolean;
   onToggleMute: () => void;
+  aspectRatio: '9:16' | '16:9' | '1:1';
+  resolution: '720p' | '1080p' | '4k';
+  mirrorVideo: boolean;
   language: 'hi' | 'en';
 }
 
@@ -23,6 +26,9 @@ export const CameraView: React.FC<CameraViewProps> = ({
   onStreamReady,
   isMuted,
   onToggleMute,
+  aspectRatio,
+  resolution,
+  mirrorVideo,
   language
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -58,12 +64,33 @@ export const CameraView: React.FC<CameraViewProps> = ({
       let mediaStream: MediaStream;
 
       // Try video + audio first, if mic fails fallback to video only
+      // Determine width/height according to resolution and aspect ratio
+      let targetWidth = 1920;
+      let targetHeight = 1080;
+      if (resolution === '720p') {
+        targetWidth = 1280;
+        targetHeight = 720;
+      } else if (resolution === '4k') {
+        targetWidth = 3840;
+        targetHeight = 2160;
+      }
+
+      // If vertical 9:16, invert width and height
+      if (aspectRatio === '9:16') {
+        const tmp = targetWidth;
+        targetWidth = targetHeight;
+        targetHeight = tmp;
+      } else if (aspectRatio === '1:1') {
+        targetWidth = Math.min(targetWidth, targetHeight);
+        targetHeight = targetWidth;
+      }
+
       try {
         const constraints: MediaStreamConstraints = {
           video: {
             facingMode: { ideal: facingMode },
-            width: { ideal: 1920, min: 640 },
-            height: { ideal: 1080, min: 480 },
+            width: { ideal: targetWidth },
+            height: { ideal: targetHeight },
           },
           audio: true
         };
@@ -74,6 +101,8 @@ export const CameraView: React.FC<CameraViewProps> = ({
         const videoOnlyConstraints: MediaStreamConstraints = {
           video: {
             facingMode: { ideal: facingMode },
+            width: { ideal: targetWidth },
+            height: { ideal: targetHeight },
           },
           audio: false
         };
@@ -152,7 +181,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
       setErrorMsg(message);
       onStreamReady(null);
     }
-  }, [facingMode, language, onStreamReady]);
+  }, [facingMode, resolution, aspectRatio, language, onStreamReady]);
 
   useEffect(() => {
     startCamera();
@@ -194,24 +223,47 @@ export const CameraView: React.FC<CameraViewProps> = ({
     }
   }, [isMuted, stream]);
 
+  // Determine aspect ratio class
+  const getAspectRatioClasses = () => {
+    switch (aspectRatio) {
+      case '9:16':
+        return 'aspect-[9/16] max-h-full max-w-full rounded-2xl shadow-2xl';
+      case '1:1':
+        return 'aspect-square max-h-full max-w-full rounded-2xl shadow-2xl';
+      case '16:9':
+      default:
+        return 'w-full h-full';
+    }
+  };
+
+  // Compute whether to horizontally flip image like a real mirror (sheesha)
+  // When front camera (user) is active and mirrorVideo is enabled, mirror it so lifting left hand appears on left side just like looking into a real mirror
+  const shouldMirror = facingMode === 'user' && mirrorVideo;
+
   return (
-    <div className="relative w-full h-full bg-black overflow-hidden select-none flex items-center justify-center">
-      {/* Real Video Element */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className={`w-full h-full object-cover transition-transform duration-150 ${
-          facingMode === 'user' ? 'scale-x-[-1]' : ''
-        }`}
-        style={{
-          transform: `${facingMode === 'user' ? 'scaleX(-1)' : ''} scale(${
-            !hasHardwareZoom ? zoomLevel : 1
-          })`,
-          transformOrigin: 'center center'
-        }}
-      />
+    <div className="relative w-full h-full bg-black overflow-hidden select-none flex items-center justify-center p-0">
+      {/* Video Framing Box for 9:16 or 1:1 or 16:9 */}
+      <div className={`relative overflow-hidden bg-black flex items-center justify-center ${getAspectRatioClasses()}`}>
+        {/* Real Video Element (Full body visible, no forced cropped zoom) */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover transition-transform duration-150"
+          style={{
+            transform: `${shouldMirror ? 'scaleX(-1)' : 'none'} scale(${
+              !hasHardwareZoom ? zoomLevel : 1
+            })`,
+            transformOrigin: 'center center'
+          }}
+        />
+
+        {/* Framing watermark label */}
+        <div className="absolute bottom-3 left-3 pointer-events-none px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm text-[10px] font-mono text-white/70">
+          {aspectRatio} · {resolution.toUpperCase()} · {zoomLevel.toFixed(1)}x
+        </div>
+      </div>
 
       {/* Permission or Access Error Banner */}
       {errorMsg && (
@@ -274,10 +326,10 @@ export const CameraView: React.FC<CameraViewProps> = ({
       <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5">
         <div className="flex items-center bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-2 py-1 text-xs text-white font-mono">
           <button
-            onClick={() => onZoomChange(Math.max(1, +(zoomLevel - 0.5).toFixed(1)))}
-            disabled={zoomLevel <= 1}
+            onClick={() => onZoomChange(Math.max(0.6, +(zoomLevel - 0.2).toFixed(1)))}
+            disabled={zoomLevel <= 0.6}
             className="p-1 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-            title="Zoom Out"
+            title="Zoom Out (Wide Angle Full Body)"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
@@ -285,8 +337,8 @@ export const CameraView: React.FC<CameraViewProps> = ({
             {zoomLevel.toFixed(1)}x
           </span>
           <button
-            onClick={() => onZoomChange(Math.min(5, +(zoomLevel + 0.5).toFixed(1)))}
-            disabled={zoomLevel >= 5}
+            onClick={() => onZoomChange(Math.min(4, +(zoomLevel + 0.2).toFixed(1)))}
+            disabled={zoomLevel >= 4}
             className="p-1 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             title="Zoom In"
           >

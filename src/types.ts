@@ -13,6 +13,9 @@ export interface PrompterSettings {
   showEyeGuide: boolean;     // Eye-contact alignment guide
   countdownSeconds: number;  // 3, 5, or 0
   highContrastShadow: boolean;
+  videoResolution: '720p' | '1080p' | '4k';
+  aspectRatio: '9:16' | '16:9' | '1:1';
+  mirrorVideo: boolean;      // True for mirror (like a real mirror/sheesha), False for true orientation
 }
 
 export interface ScriptItem {
