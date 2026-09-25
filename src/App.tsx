@@ -5,7 +5,9 @@ import { StudioControls } from './components/StudioControls';
 import { ScriptModal } from './components/ScriptModal';
 import { SettingsModal } from './components/SettingsModal';
 import { VideoPreviewModal } from './components/VideoPreviewModal';
+import { VideoGalleryModal } from './components/VideoGalleryModal';
 import { AndroidProjectViewer } from './components/AndroidProjectViewer';
+import { saveVideoToGallery } from './utils/videoGalleryStorage';
 import { DEFAULT_SCRIPTS } from './data/defaultScripts';
 import { 
   RecordingStatus, 
@@ -85,6 +87,7 @@ export default function App() {
   const [isScriptModalOpen, setIsScriptModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isVideoPreviewOpen, setIsVideoPreviewOpen] = useState<boolean>(false);
+  const [isGalleryModalOpen, setIsGalleryModalOpen] = useState<boolean>(false);
   const [isAndroidModalOpen, setIsAndroidModalOpen] = useState<boolean>(false);
 
   // References for MediaRecorder and timers
@@ -171,6 +174,14 @@ export default function App() {
           fileSizeBytes: fullBlob.size,
           timestamp,
         });
+
+        // Automatically persist into App Gallery (IndexedDB)
+        saveVideoToGallery({
+          blob: fullBlob,
+          durationSeconds: recordingDuration,
+          fileSizeBytes: fullBlob.size,
+          timestamp,
+        }).catch((err) => console.warn('Auto gallery save error:', err));
 
         setIsVideoPreviewOpen(true);
         setRecordingStatus('idle');
@@ -440,6 +451,7 @@ export default function App() {
         onZoomChange={setZoomLevel}
         onOpenScriptModal={() => setIsScriptModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+        onOpenGalleryModal={() => setIsGalleryModalOpen(true)}
         onOpenAndroidModal={() => setIsAndroidModalOpen(true)}
         language={language}
       />
@@ -474,6 +486,13 @@ export default function App() {
         onClose={() => setIsVideoPreviewOpen(false)}
         video={recordedVideo}
         onRetake={handleRetakeVideo}
+        language={language}
+      />
+
+      {/* Video Gallery Modal (Persistent in-app storage) */}
+      <VideoGalleryModal
+        isOpen={isGalleryModalOpen}
+        onClose={() => setIsGalleryModalOpen(false)}
         language={language}
       />
 

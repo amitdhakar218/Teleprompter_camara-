@@ -24,13 +24,41 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
   const seconds = video.durationSeconds % 60;
   const durationText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-  const handleDownload = () => {
+  const [savedSuccess, setSavedSuccess] = React.useState<boolean>(false);
+
+  const handleDownload = async () => {
+    const ext = video.blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const filename = `Teleprompter_Record_${video.timestamp}.${ext}`;
+
+    // 1. Try native Web Share API (Android saves directly to Files/Gallery)
+    if (navigator.canShare) {
+      try {
+        const file = new File([video.blob], filename, { type: video.blob.type });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Teleprompter Clean Video',
+            text: 'Teleprompter camera recording',
+          });
+          setSavedSuccess(true);
+          setTimeout(() => setSavedSuccess(false), 3500);
+          return;
+        }
+      } catch (e) {
+        console.warn('Share API fallback', e);
+      }
+    }
+
+    // 2. Direct browser download fallback
     const a = document.createElement('a');
     a.href = video.url;
-    a.download = `Teleprompter_Record_${video.timestamp}.webm`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3500);
   };
 
   return (
@@ -91,8 +119,19 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
             </div>
           </div>
 
-          {/* Explanatory callout */}
-          <div className="w-full max-w-lg mt-4 p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300 leading-relaxed">
+          {/* Explanatory callout & Success Banner */}
+          {savedSuccess && (
+            <div className="w-full max-w-lg mb-3 p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-xs text-emerald-300 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <span>
+                {language === 'hi' 
+                  ? 'वीडियो आपके मोबाइल के Download/Gallery फ़ोल्डर में सेव हो गई और ऐप की गैलरी में भी सुरक्षित है!' 
+                  : 'Video saved to your mobile Downloads/Gallery and stored in app gallery!'}
+              </span>
+            </div>
+          )}
+
+          <div className="w-full max-w-lg mt-2 p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300 leading-relaxed">
             {language === 'hi'
               ? 'जैसा आपने चाहा था: इस वीडियो में टेलीप्रॉम्प्टर का टेक्स्ट शामिल नहीं है। यह सिर्फ आपकी ओरिजिनल हाई-डेफिनिशन कैमरा रिकॉर्डिंग है।'
               : 'As requested: this recorded video does not contain the teleprompter text overlay. It captures only your pure high-definition camera stream.'}

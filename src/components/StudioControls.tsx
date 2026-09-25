@@ -7,7 +7,8 @@ import {
   Settings, 
   Code, 
   Sliders,
-  Volume2
+  Volume2,
+  FolderOpen
 } from 'lucide-react';
 import { RecordingStatus, PrompterSettings } from '../types';
 
@@ -24,6 +25,7 @@ interface StudioControlsProps {
   onOpenScriptModal: () => void;
   onOpenSettingsModal: () => void;
   onOpenAndroidModal: () => void;
+  onOpenGalleryModal: () => void;
   language: 'hi' | 'en';
 }
 
@@ -40,6 +42,7 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
   onOpenScriptModal,
   onOpenSettingsModal,
   onOpenAndroidModal,
+  onOpenGalleryModal,
   language,
 }) => {
   // Format recording duration (seconds -> MM:SS)
@@ -130,20 +133,37 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
 
       {/* Main Bottom Deck: Scripts / Record & Pause / Settings / Android Project */}
       <div className="w-full max-w-xl flex items-center justify-between gap-3 px-2">
-        {/* Left Side: Script Editor Trigger */}
-        <button
-          onClick={onOpenScriptModal}
-          disabled={recordingStatus === 'recording'}
-          className="flex flex-col items-center gap-1 text-slate-300 hover:text-white disabled:opacity-40 transition-colors p-2 rounded-xl hover:bg-white/5 cursor-pointer"
-          title={language === 'hi' ? 'स्क्रिप्ट बदलें / नया टेक्स्ट डालें' : 'Edit Script / Paste Text'}
-        >
-          <div className="w-10 h-10 rounded-full bg-slate-800/90 border border-white/10 flex items-center justify-center">
-            <FileText className="w-4 h-4 text-slate-200" />
-          </div>
-          <span className="text-[11px] font-medium tracking-tight">
-            {language === 'hi' ? 'स्क्रिप्ट' : 'Script'}
-          </span>
-        </button>
+        {/* Left Side: Script Editor & Video Gallery Trigger */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onOpenScriptModal}
+            disabled={recordingStatus === 'recording'}
+            className="flex flex-col items-center gap-1 text-slate-300 hover:text-white disabled:opacity-40 transition-colors p-2 rounded-xl hover:bg-white/5 cursor-pointer"
+            title={language === 'hi' ? 'स्क्रिप्ट बदलें / नया टेक्स्ट डालें' : 'Edit Script / Paste Text'}
+          >
+            <div className="w-10 h-10 rounded-full bg-slate-800/90 border border-white/10 flex items-center justify-center">
+              <FileText className="w-4 h-4 text-slate-200" />
+            </div>
+            <span className="text-[11px] font-medium tracking-tight">
+              {language === 'hi' ? 'स्क्रिप्ट' : 'Script'}
+            </span>
+          </button>
+
+          {/* Video Library / Gallery */}
+          <button
+            onClick={onOpenGalleryModal}
+            disabled={recordingStatus === 'recording'}
+            className="flex flex-col items-center gap-1 text-rose-400 hover:text-rose-300 disabled:opacity-40 transition-colors p-2 rounded-xl hover:bg-white/5 cursor-pointer"
+            title={language === 'hi' ? 'मेरी रिकॉर्डिंग्स (गैलरी स्टोरेज)' : 'Recorded Videos Gallery'}
+          >
+            <div className="w-10 h-10 rounded-full bg-rose-950/70 border border-rose-500/30 flex items-center justify-center">
+              <FolderOpen className="w-4 h-4 text-rose-400" />
+            </div>
+            <span className="text-[11px] font-medium tracking-tight">
+              {language === 'hi' ? 'गैलरी' : 'Gallery'}
+            </span>
+          </button>
+        </div>
 
         {/* Center: Record / Pause / Stop Group */}
         <div className="flex items-center gap-4">
