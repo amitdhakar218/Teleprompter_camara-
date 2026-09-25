@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Teleprompter Camera</string>
+    <string name="title_activity_main">Teleprompter Camera</string>
+    <string name="package_name">com.amitdhakar.teleprompter</string>
+    <string name="custom_url_scheme">com.amitdhakar.teleprompter</string>
+</resources>
