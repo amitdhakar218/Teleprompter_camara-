@@ -49,7 +49,13 @@ jobs:
 
       - name: Build Debug APK
         working-directory: ./android
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        run: |
+          ./gradlew assembleDebug --stacktrace --no-daemon || {
+            echo "::warning::Standard gradlew failed, re-generating wrapper and retrying..."
+            gradle wrapper --gradle-version 8.11.1
+            chmod +x gradlew
+            ./gradlew assembleDebug --stacktrace --no-daemon
+          }
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
