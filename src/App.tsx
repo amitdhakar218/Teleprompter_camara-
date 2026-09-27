@@ -145,10 +145,22 @@ export default function App() {
         }
       }
 
-      const recorder = new MediaRecorder(
-        stream,
-        selectedMime ? { mimeType: selectedMime } : undefined
-      );
+      // Set bitrate based on selected resolution for crystal clear video recording
+      let videoBitsPerSecond = 8_000_000; // 8 Mbps default for 1080p
+      if (prompterSettings.videoResolution === '4k') {
+        videoBitsPerSecond = 20_000_000; // 20 Mbps for 4K
+      } else if (prompterSettings.videoResolution === '720p') {
+        videoBitsPerSecond = 4_000_000; // 4 Mbps for 720p
+      }
+
+      const recorderOptions: MediaRecorderOptions = {
+        videoBitsPerSecond,
+      };
+      if (selectedMime) {
+        recorderOptions.mimeType = selectedMime;
+      }
+
+      const recorder = new MediaRecorder(stream, recorderOptions);
 
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {

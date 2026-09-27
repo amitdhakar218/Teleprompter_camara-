@@ -28,13 +28,17 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
   const [savedSuccess, setSavedSuccess] = React.useState<boolean>(false);
   const [successText, setSuccessText] = React.useState<string>('');
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
+  const [saveProgress, setSaveProgress] = React.useState<number>(0);
 
   // 1. Direct Save to Mobile Phone Storage (MediaStore / Gallery / Downloads)
   const handleDirectDownload = async () => {
     if (isSaving) return;
     setIsSaving(true);
+    setSaveProgress(0);
     try {
-      const res = await saveVideoToPhoneStorage(video.blob, video.timestamp);
+      const res = await saveVideoToPhoneStorage(video.blob, video.timestamp, (pct) => {
+        setSaveProgress(pct);
+      });
       setSuccessText(
         language === 'hi'
           ? (res.isNative
@@ -176,7 +180,7 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
               )}
               <span>
                 {isSaving
-                  ? (language === 'hi' ? 'सेव हो रहा है...' : 'Saving...')
+                  ? (language === 'hi' ? `सेव हो रहा है ${saveProgress}%...` : `Saving ${saveProgress}%...`)
                   : (language === 'hi' ? 'गैलरी / स्टोरेज में सेव करें' : 'Save to Gallery / Storage')}
               </span>
             </button>

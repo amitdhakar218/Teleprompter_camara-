@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Camera, RefreshCw, ZoomIn, ZoomOut, Mic, Volume2, VolumeX, AlertCircle } from 'lucide-react';
+import { Camera, RefreshCw, ZoomIn, ZoomOut, Mic, Volume2, VolumeX, AlertCircle, Maximize2, Minimize2 } from 'lucide-react';
 import { RecordingStatus } from '../types';
 
 interface CameraViewProps {
@@ -42,7 +42,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
   const [audioLevel, setAudioLevel] = useState<number>(0);
   const [hasHardwareZoom, setHasHardwareZoom] = useState<boolean>(false);
   const [capabilities, setCapabilities] = useState<{ min: number; max: number; step: number }>({ min: 1, max: 5, step: 0.1 });
-  const [showZoomSlider, setShowZoomSlider] = useState<boolean>(false);
+  const [framingMode, setFramingMode] = useState<'cover' | 'contain'>('cover');
 
   // Initialize camera stream with robust device resolution & rear/front fallback
   const startCamera = useCallback(async () => {
@@ -119,8 +119,11 @@ export const CameraView: React.FC<CameraViewProps> = ({
         targetHeight = 2160;
       }
 
-      // If vertical 9:16, invert width and height
-      if (aspectRatio === '9:16') {
+      // Detect if user's screen is in portrait (mobile phone vertical)
+      const isScreenPortrait = typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : true;
+
+      // If vertical 9:16 or portrait screen, adjust dimensions so camera sensor streams vertical without cropping
+      if (aspectRatio === '9:16' || (isScreenPortrait && aspectRatio !== '1:1')) {
         const tmp = targetWidth;
         targetWidth = targetHeight;
         targetHeight = tmp;
@@ -129,15 +132,24 @@ export const CameraView: React.FC<CameraViewProps> = ({
         targetHeight = targetWidth;
       }
 
+      const videoConstraints: MediaTrackConstraints = {
+        facingMode: { ideal: facingMode },
+        width: { ideal: targetWidth },
+        height: { ideal: targetHeight },
+        frameRate: { ideal: 30, max: 60 }
+      };
+
+      const audioConstraints: MediaTrackConstraints = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      };
+
       // Attempt 1: Standard facingMode with ideal constraint (most widely supported on mobile Android/iOS)
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: facingMode },
-            width: { ideal: targetWidth },
-            height: { ideal: targetHeight },
-          },
-          audio: true,
+          video: videoConstraints,
+          audio: audioConstraints,
         });
       } catch (err1) {
         console.warn('Attempt 1 ideal facingMode failed, trying deviceId fallback:', err1);
@@ -150,8 +162,9 @@ export const CameraView: React.FC<CameraViewProps> = ({
                 deviceId: { ideal: targetDeviceId },
                 width: { ideal: targetWidth },
                 height: { ideal: targetHeight },
+                frameRate: { ideal: 30 }
               },
-              audio: true,
+              audio: audioConstraints,
             });
           } catch (err2) {
             console.warn('Attempt 2 deviceId fallback failed:', err2);
@@ -328,13 +341,13 @@ export const CameraView: React.FC<CameraViewProps> = ({
     <div className="relative w-full h-full bg-black overflow-hidden select-none flex items-center justify-center p-0">
       {/* Video Framing Box for 9:16 or 1:1 or 16:9 */}
       <div className={`relative overflow-hidden bg-black flex items-center justify-center ${getAspectRatioClasses()}`}>
-        {/* Real Video Element (Full screen cover, high clarity, never shrinks) */}
+        {/* Real Video Element (Full screen cover or full-body uncropped fit, never shrinks) */}
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="w-full h-full object-cover transition-transform duration-100 will-change-transform"
+          className={`w-full h-full ${framingMode === 'contain' ? 'object-contain' : 'object-cover'} transition-transform duration-100 will-change-transform`}
           style={{
             transform: `${shouldMirror ? 'scaleX(-1)' : 'scaleX(1)'} scale(${visualScale})`,
             transformOrigin: 'center center'
@@ -343,7 +356,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
         {/* Clean Framing indicator badge */}
         <div className="absolute bottom-3 left-3 pointer-events-none px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm text-[10px] font-mono text-white/70">
-          {aspectRatio} · {resolution.toUpperCase()} · {effectiveZoom.toFixed(1)}x
+          {aspectRatio} · {resolution.toUpperCase()} · {effectiveZoom.toFixed(1)}x {framingMode === 'contain' ? '· FIT' : ''}
         </div>
       </div>
 
@@ -367,8 +380,8 @@ export const CameraView: React.FC<CameraViewProps> = ({
         </div>
       )}
 
-      {/* Viewport HUD indicators (Recording, Audio Mic Level, Camera Switch) */}
-      <div className="absolute top-4 left-4 z-20 flex items-center gap-2.5">
+      {/* Viewport HUD indicators (Recording, Audio Mic Level, Camera Switch, Framing Toggle) */}
+      <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
         {/* Audio Mic Level Bar */}
         <div 
           onClick={onToggleMute}
@@ -404,6 +417,22 @@ export const CameraView: React.FC<CameraViewProps> = ({
             {facingMode === 'user' 
               ? (language === 'hi' ? 'फ्रंट' : 'Front') 
               : (language === 'hi' ? 'बैक' : 'Rear')}
+          </span>
+        </button>
+
+        {/* Framing Mode Toggle (Fit Full Body vs Fill Screen) */}
+        <button
+          onClick={() => setFramingMode(prev => prev === 'cover' ? 'contain' : 'cover')}
+          title={framingMode === 'cover' ? 'अनकटा पूरा फ्रेम देखें (Fit Full Body)' : 'स्क्रीन भरें (Fill Screen)'}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/80 active:scale-95 transition-all cursor-pointer shadow-md"
+        >
+          {framingMode === 'cover' ? (
+            <Minimize2 className="w-3.5 h-3.5 text-sky-400" />
+          ) : (
+            <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
+          )}
+          <span className="text-[11px] font-medium hidden sm:inline">
+            {framingMode === 'cover' ? 'Fill' : 'Fit'}
           </span>
         </button>
       </div>
