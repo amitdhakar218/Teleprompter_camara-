@@ -1,6 +1,6 @@
 import React from 'react';
 import { RecordedVideo } from '../types';
-import { X, Download, RotateCcw, CheckCircle2, ShieldCheck, Film } from 'lucide-react';
+import { X, Download, RotateCcw, CheckCircle2, ShieldCheck, Film, Share2 } from 'lucide-react';
 
 interface VideoPreviewModalProps {
   video: RecordedVideo | null;
@@ -25,23 +25,52 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
   const durationText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
   const [savedSuccess, setSavedSuccess] = React.useState<boolean>(false);
+  const [successText, setSuccessText] = React.useState<string>('');
 
-  const handleDownload = async () => {
+  // 1. Direct Download to Mobile Phone Storage (Downloads / Gallery)
+  const handleDirectDownload = () => {
     const ext = video.blob.type.includes('mp4') ? 'mp4' : 'webm';
-    const filename = `Teleprompter_Record_${video.timestamp}.${ext}`;
+    const filename = `Camera_Video_${video.timestamp}.${ext}`;
 
-    // 1. Try native Web Share API (Android saves directly to Files/Gallery)
+    const a = document.createElement('a');
+    a.href = video.url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+    }, 1500);
+
+    setSuccessText(
+      language === 'hi'
+        ? 'वीडियो आपके मोबाइल स्टोरेज (Downloads फ़ोल्डर) में सेव हो रही है!'
+        : 'Video is downloading directly into your phone storage (Downloads)!'
+    );
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 5000);
+  };
+
+  // 2. Share via Android Share Sheet to Photos / WhatsApp / Google Drive
+  const handleShare = async () => {
+    const ext = video.blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const filename = `Camera_Video_${video.timestamp}.${ext}`;
+
     if (navigator.canShare) {
       try {
         const file = new File([video.blob], filename, { type: video.blob.type });
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
-            title: 'Teleprompter Clean Video',
-            text: 'Teleprompter camera recording',
+            title: 'Camera Recording',
+            text: 'Save video or send to apps',
           });
+          setSuccessText(
+            language === 'hi'
+              ? 'वीडियो सफलतापूर्वक शेयर / सेव हो गई!'
+              : 'Video successfully shared / saved!'
+          );
           setSavedSuccess(true);
-          setTimeout(() => setSavedSuccess(false), 3500);
+          setTimeout(() => setSavedSuccess(false), 4000);
           return;
         }
       } catch (e) {
@@ -49,16 +78,8 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
       }
     }
 
-    // 2. Direct browser download fallback
-    const a = document.createElement('a');
-    a.href = video.url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3500);
+    // Fallback if sharing is cancelled or not supported
+    handleDirectDownload();
   };
 
   return (
@@ -115,31 +136,27 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
               {language === 'hi' ? 'फाइल साइज़:' : 'Size:'} <strong className="text-white font-mono">{fileSizeMB} MB</strong>
             </div>
             <div className="text-emerald-400 font-medium">
-              {language === 'hi' ? 'लोकल डाउनलोड हेतु तैयार' : 'Ready to save'}
+              {language === 'hi' ? 'सेव करने के लिए तैयार' : 'Ready to save'}
             </div>
           </div>
 
           {/* Explanatory callout & Success Banner */}
           {savedSuccess && (
-            <div className="w-full max-w-lg mb-3 p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-xs text-emerald-300 flex items-center gap-2">
+            <div className="w-full max-w-lg mt-3 p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-              <span>
-                {language === 'hi' 
-                  ? 'वीडियो आपके मोबाइल के Download/Gallery फ़ोल्डर में सेव हो गई और ऐप की गैलरी में भी सुरक्षित है!' 
-                  : 'Video saved to your mobile Downloads/Gallery and stored in app gallery!'}
-              </span>
+              <span>{successText}</span>
             </div>
           )}
 
           <div className="w-full max-w-lg mt-2 p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300 leading-relaxed">
             {language === 'hi'
-              ? 'जैसा आपने चाहा था: इस वीडियो में टेलीप्रॉम्प्टर का टेक्स्ट शामिल नहीं है। यह सिर्फ आपकी ओरिजिनल हाई-डेफिनिशन कैमरा रिकॉर्डिंग है।'
-              : 'As requested: this recorded video does not contain the teleprompter text overlay. It captures only your pure high-definition camera stream.'}
+              ? 'यह वीडियो सीधे आपके मोबाइल फ़ोन के "Downloads / Files" फ़ोल्डर में सेव होती है। इसमें टेलीप्रॉम्प्टर का टेक्स्ट नहीं आया है, सिर्फ कैमरा रिकॉर्डिंग है।'
+              : 'This video saves directly into your phone Downloads/Files folder. Clean camera stream with no teleprompter overlay.'}
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+        <div className="px-6 py-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-2 flex-wrap">
           <button
             onClick={onRetake}
             className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-2 cursor-pointer"
@@ -148,13 +165,24 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
             {language === 'hi' ? 'दोबारा रिकॉर्ड करें (Retake)' : 'Retake Video'}
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Share to Apps button */}
             <button
-              onClick={handleDownload}
-              className="px-6 py-2.5 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-950/50 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+              onClick={handleShare}
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+              title={language === 'hi' ? 'WhatsApp, Photos या Drive में भेजें' : 'Share to apps'}
+            >
+              <Share2 className="w-4 h-4 text-sky-400" />
+              <span>{language === 'hi' ? 'शेयर करें' : 'Share'}</span>
+            </button>
+
+            {/* Direct Save to Mobile Storage Button */}
+            <button
+              onClick={handleDirectDownload}
+              className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-950/50 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              {language === 'hi' ? 'गैलरी / डिवाइस में सेव करें (Download)' : 'Save to Gallery / Device'}
+              <span>{language === 'hi' ? 'फ़ोन स्टोरेज में सेव करें (Download)' : 'Save to Mobile Storage'}</span>
             </button>
           </div>
         </div>

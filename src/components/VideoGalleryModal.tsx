@@ -65,38 +65,20 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
     setActiveVideo({ id: video.id, url, timestamp: video.timestamp });
   };
 
-  const handleSaveToDevice = async (video: StoredVideoItem) => {
+  const handleDirectDownloadToDevice = (video: StoredVideoItem) => {
     const ext = video.blob.type.includes('mp4') ? 'mp4' : 'webm';
-    const filename = `Teleprompter_${video.timestamp}.${ext}`;
+    const filename = `Camera_Video_${video.timestamp}.${ext}`;
 
-    // 1. Try Web Share API (File sharing works natively in Android Chrome & WebView)
-    if (navigator.canShare) {
-      try {
-        const file = new File([video.blob], filename, { type: video.blob.type });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'Teleprompter Video',
-            text: 'Save video to Gallery or Files',
-          });
-          setSaveSuccessMsg(language === 'hi' ? 'वीडियो शेयर / सेव हो गई!' : 'Video shared/saved!');
-          setTimeout(() => setSaveSuccessMsg(''), 3000);
-          return;
-        }
-      } catch (e) {
-        console.warn('Share API cancelled or unsupported, fallback to download anchor', e);
-      }
-    }
-
-    // 2. Fallback to direct anchor download
     const url = URL.createObjectURL(video.blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 2000);
 
     setSaveSuccessMsg(
       language === 'hi' 
@@ -104,6 +86,31 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
         : 'Video saved to your mobile Downloads folder!'
     );
     setTimeout(() => setSaveSuccessMsg(''), 3500);
+  };
+
+  const handleShareVideo = async (video: StoredVideoItem) => {
+    const ext = video.blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const filename = `Camera_Video_${video.timestamp}.${ext}`;
+
+    if (navigator.canShare) {
+      try {
+        const file = new File([video.blob], filename, { type: video.blob.type });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Camera Video Recording',
+            text: 'Save video or send to apps',
+          });
+          setSaveSuccessMsg(language === 'hi' ? 'वीडियो शेयर / सेव हो गई!' : 'Video shared/saved!');
+          setTimeout(() => setSaveSuccessMsg(''), 3000);
+          return;
+        }
+      } catch (e) {
+        console.warn('Share API error', e);
+      }
+    }
+
+    handleDirectDownloadToDevice(video);
   };
 
   const handleDelete = async (id: string) => {
@@ -257,9 +264,17 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
                   {/* Actions */}
                   <div className="flex items-center gap-2 self-end sm:self-center">
                     <button
-                      onClick={() => handleSaveToDevice(vid)}
+                      onClick={() => handleShareVideo(vid)}
+                      className="p-2 text-slate-400 hover:text-sky-400 hover:bg-slate-800/80 rounded-xl transition-colors cursor-pointer"
+                      title={language === 'hi' ? 'शेयर करें (WhatsApp / Drive / Photos)' : 'Share video'}
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => handleDirectDownloadToDevice(vid)}
                       className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
-                      title={language === 'hi' ? 'मोबाइल गैलरी / डाउनलोड में सेव करें' : 'Save to phone gallery / downloads'}
+                      title={language === 'hi' ? 'मोबाइल डाउनलोड फ़ोल्डर में सेव करें' : 'Download to mobile storage'}
                     >
                       <Download className="w-3.5 h-3.5 text-rose-400" />
                       <span>{language === 'hi' ? 'फोन में सेव करें' : 'Save to Phone'}</span>

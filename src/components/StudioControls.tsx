@@ -86,23 +86,40 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
 
           <div className="h-4 w-px bg-white/10 shrink-0" />
 
-          {/* Quick Zoom Buttons including 0.7x wide angle */}
+          {/* Quick Zoom Buttons & 0.1x step */}
           <div className="flex items-center gap-1 shrink-0">
-            <span className="text-[10px] text-slate-400 hidden sm:inline mr-0.5">Zoom:</span>
-            {[0.7, 1, 1.5, 2].map((level) => (
+            <button
+              onClick={() => onZoomChange(Math.max(0.1, +(zoomLevel - 0.1).toFixed(1)))}
+              disabled={zoomLevel <= 0.1}
+              className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-white/5 hover:bg-white/15 text-slate-300 disabled:opacity-30 cursor-pointer active:scale-95"
+              title="Zoom -0.1"
+            >
+              -0.1
+            </button>
+
+            {[0.1, 0.5, 1, 1.5, 2].map((level) => (
               <button
                 key={level}
                 onClick={() => onZoomChange(level)}
-                className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+                className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
                   Math.abs(zoomLevel - level) < 0.05
                     ? 'bg-rose-600 text-white font-bold'
                     : 'bg-white/5 hover:bg-white/15 text-slate-300'
                 }`}
-                title={level === 0.7 ? '0.7x Wide (फुल बॉडी)' : `${level}x Zoom`}
+                title={level === 0.1 ? '0.1x Wide (फुल बॉडी)' : `${level}x Zoom`}
               >
-                {level === 0.7 ? '0.7x Wide' : `${level}x`}
+                {level === 0.1 ? '0.1x' : `${level}x`}
               </button>
             ))}
+
+            <button
+              onClick={() => onZoomChange(Math.min(4.0, +(zoomLevel + 0.1).toFixed(1)))}
+              disabled={zoomLevel >= 4.0}
+              className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-white/5 hover:bg-white/15 text-slate-300 disabled:opacity-30 cursor-pointer active:scale-95"
+              title="Zoom +0.1"
+            >
+              +0.1
+            </button>
           </div>
         </div>
 

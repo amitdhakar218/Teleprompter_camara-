@@ -129,12 +129,13 @@ export default function App() {
     try {
       recordedChunksRef.current = [];
 
-      // Determine best supported mimeType
+      // Determine best supported mimeType (prioritizing MP4 for mobile gallery compatibility)
       const mimeTypes = [
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/mp4',
         'video/webm;codecs=vp9,opus',
         'video/webm;codecs=vp8,opus',
         'video/webm',
-        'video/mp4',
       ];
       let selectedMime = '';
       for (const m of mimeTypes) {
@@ -187,16 +188,18 @@ export default function App() {
           timestamp,
         }).catch((err) => console.warn('Auto gallery save error:', err));
 
-        // 2. Automatically trigger device download so it lands in phone's Downloads/Gallery folder without clicking
+        // 2. Automatically trigger device download attempt
         try {
-          const ext = (selectedMime && selectedMime.includes('mp4')) ? 'mp4' : 'mp4';
-          const filename = `Teleprompter_${timestamp}.${ext}`;
+          const ext = (selectedMime && selectedMime.includes('mp4')) ? 'mp4' : 'webm';
+          const filename = `Camera_Video_${timestamp}.${ext}`;
           const downloadAnchor = document.createElement('a');
           downloadAnchor.href = videoUrl;
           downloadAnchor.download = filename;
           document.body.appendChild(downloadAnchor);
           downloadAnchor.click();
-          document.body.removeChild(downloadAnchor);
+          setTimeout(() => {
+            document.body.removeChild(downloadAnchor);
+          }, 1500);
         } catch (autoSaveErr) {
           console.warn('Auto download trigger warning:', autoSaveErr);
         }
@@ -352,24 +355,21 @@ export default function App() {
         Zone 3: 1-2 primary actions (Language & Fullscreen)
       */}
       <header className="absolute top-0 left-0 right-0 z-30 px-3 md:px-6 py-2.5 flex items-center justify-between bg-gradient-to-b from-black/85 via-black/50 to-transparent pointer-events-auto">
-        {/* App Title & Quick Camera Switch Button */}
-        <div className="flex items-center gap-2.5">
-          <span className="text-sm md:text-lg font-bold tracking-tight text-white flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
-            Teleprompter
-          </span>
+        {/* Live Indicator & Quick Camera Switch Button (Clean Header, No Teleprompter Text) */}
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" title="Live Camera" />
 
           {/* Quick Front/Back Camera Switch button in Header */}
           <button
             onClick={handleToggleFacingMode}
-            className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs text-white flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-md"
+            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs text-white flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-md"
             title={language === 'hi' ? 'कैमरा बदलें (Front / Back)' : 'Switch Front/Back Camera'}
           >
             <RefreshCw className="w-3.5 h-3.5 text-rose-400" />
-            <span className="font-medium text-[11px]">
+            <span className="font-medium text-xs">
               {facingMode === 'user' 
-                ? (language === 'hi' ? 'फ्रंट कैमरा' : 'Front') 
-                : (language === 'hi' ? 'बैक कैमरा' : 'Rear')}
+                ? (language === 'hi' ? 'फ्रंट कैमरा' : 'Front Camera') 
+                : (language === 'hi' ? 'बैक कैमरा' : 'Back Camera')}
             </span>
           </button>
         </div>
