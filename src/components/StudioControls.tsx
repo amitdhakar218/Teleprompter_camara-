@@ -8,7 +8,9 @@ import {
   Sliders,
   Volume2,
   FolderOpen,
-  RefreshCw
+  RefreshCw,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 import { RecordingStatus, PrompterSettings } from '../types';
 
@@ -86,40 +88,42 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
 
           <div className="h-4 w-px bg-white/10 shrink-0" />
 
-          {/* Quick Zoom Buttons & 0.1x step */}
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={() => onZoomChange(Math.max(0.1, +(zoomLevel - 0.1).toFixed(1)))}
-              disabled={zoomLevel <= 0.1}
-              className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-white/5 hover:bg-white/15 text-slate-300 disabled:opacity-30 cursor-pointer active:scale-95"
-              title="Zoom -0.1"
-            >
-              -0.1
-            </button>
+          {/* Clean Zoom Slider with Icons */}
+          <div className="flex-1 flex items-center gap-2">
+            <span className="text-slate-300 font-medium whitespace-nowrap shrink-0 flex items-center gap-1 text-[11px]">
+              <ZoomIn className="w-3.5 h-3.5 text-rose-400" />
+              {language === 'hi' ? 'ज़ूम:' : 'Zoom:'}
+            </span>
+            <input
+              type="range"
+              min="1.0"
+              max="3.0"
+              step="0.1"
+              value={Math.max(1.0, zoomLevel)}
+              onChange={(e) => onZoomChange(parseFloat(e.target.value))}
+              className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
+            />
+            <span className="text-white font-mono font-semibold tabular-nums min-w-[32px] text-right text-[11px]">
+              {Math.max(1.0, zoomLevel).toFixed(1)}x
+            </span>
 
-            {[0.1, 0.5, 1, 1.5, 2].map((level) => (
-              <button
-                key={level}
-                onClick={() => onZoomChange(level)}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
-                  Math.abs(zoomLevel - level) < 0.05
-                    ? 'bg-rose-600 text-white font-bold'
-                    : 'bg-white/5 hover:bg-white/15 text-slate-300'
-                }`}
-                title={level === 0.1 ? '0.1x Wide (फुल बॉडी)' : `${level}x Zoom`}
-              >
-                {level === 0.1 ? '0.1x' : `${level}x`}
-              </button>
-            ))}
-
-            <button
-              onClick={() => onZoomChange(Math.min(4.0, +(zoomLevel + 0.1).toFixed(1)))}
-              disabled={zoomLevel >= 4.0}
-              className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-white/5 hover:bg-white/15 text-slate-300 disabled:opacity-30 cursor-pointer active:scale-95"
-              title="Zoom +0.1"
-            >
-              +0.1
-            </button>
+            {/* Quick 1x / 2x icon buttons */}
+            <div className="flex items-center gap-1 shrink-0 ml-0.5">
+              {[1.0, 2.0].map((preset) => (
+                <button
+                  key={preset}
+                  onClick={() => onZoomChange(preset)}
+                  className={`w-5 h-5 rounded-full text-[10px] font-mono flex items-center justify-center transition-all cursor-pointer ${
+                    Math.abs(zoomLevel - preset) < 0.15
+                      ? 'bg-rose-600 text-white font-bold shadow'
+                      : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                  }`}
+                  title={`${preset}x Zoom`}
+                >
+                  {preset}x
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

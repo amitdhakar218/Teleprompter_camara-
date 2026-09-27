@@ -17,6 +17,7 @@ import {
   getAllStoredVideos, 
   deleteVideoFromGallery 
 } from '../utils/videoGalleryStorage';
+import { saveVideoToPhoneStorage, shareVideoToApps } from '../utils/nativeStorage';
 
 interface VideoGalleryModalProps {
   isOpen: boolean;
@@ -65,52 +66,31 @@ export const VideoGalleryModal: React.FC<VideoGalleryModalProps> = ({
     setActiveVideo({ id: video.id, url, timestamp: video.timestamp });
   };
 
-  const handleDirectDownloadToDevice = (video: StoredVideoItem) => {
-    const ext = video.blob.type.includes('mp4') ? 'mp4' : 'webm';
-    const filename = `Camera_Video_${video.timestamp}.${ext}`;
-
-    const url = URL.createObjectURL(video.blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 2000);
-
-    setSaveSuccessMsg(
-      language === 'hi' 
-        ? 'वीडियो आपके मोबाइल के Download फ़ोल्डर में सेव हो गई!' 
-        : 'Video saved to your mobile Downloads folder!'
-    );
-    setTimeout(() => setSaveSuccessMsg(''), 3500);
+  const handleDirectDownloadToDevice = async (video: StoredVideoItem) => {
+    try {
+      const res = await saveVideoToPhoneStorage(video.blob, video.timestamp);
+      setSaveSuccessMsg(
+        language === 'hi' 
+          ? (res.isNative 
+              ? '✓ वीडियो आपके फ़ोन की Gallery और Movies फ़ोल्डर में सेव हो गई!' 
+              : '✓ वीडियो आपके मोबाइल के Downloads फ़ोल्डर में सेव हो गई!')
+          : res.message
+      );
+      setTimeout(() => setSaveSuccessMsg(''), 4500);
+    } catch (e: any) {
+      setSaveSuccessMsg(language === 'hi' ? 'सेव करने में त्रुटि आई' : 'Failed to save');
+      setTimeout(() => setSaveSuccessMsg(''), 3000);
+    }
   };
 
   const handleShareVideo = async (video: StoredVideoItem) => {
-    const ext = video.blob.type.includes('mp4') ? 'mp4' : 'webm';
-    const filename = `Camera_Video_${video.timestamp}.${ext}`;
-
-    if (navigator.canShare) {
-      try {
-        const file = new File([video.blob], filename, { type: video.blob.type });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'Camera Video Recording',
-            text: 'Save video or send to apps',
-          });
-          setSaveSuccessMsg(language === 'hi' ? 'वीडियो शेयर / सेव हो गई!' : 'Video shared/saved!');
-          setTimeout(() => setSaveSuccessMsg(''), 3000);
-          return;
-        }
-      } catch (e) {
-        console.warn('Share API error', e);
-      }
+    try {
+      const res = await shareVideoToApps(video.blob, video.timestamp);
+      setSaveSuccessMsg(language === 'hi' ? 'शेयरिंग मेन्यू खुल गया है!' : res.message);
+      setTimeout(() => setSaveSuccessMsg(''), 3500);
+    } catch (e) {
+      console.warn('Share error', e);
     }
-
-    handleDirectDownloadToDevice(video);
   };
 
   const handleDelete = async (id: string) => {

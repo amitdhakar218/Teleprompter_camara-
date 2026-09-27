@@ -1,0 +1,62 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Outer Camera Rim Ring -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#E11D48"
+        android:strokeWidth="3.5"
+        android:pathData="M 54,18 A 36,36 0 1,1 53.9,18" />
+
+    <!-- Lens Body -->
+    <path
+        android:fillColor="#1E293B"
+        android:strokeColor="#334155"
+        android:strokeWidth="1.5"
+        android:pathData="M 54,23 A 31,31 0 1,1 53.9,23" />
+
+    <!-- Inner Dark Optical Pupil -->
+    <path
+        android:fillColor="#020617"
+        android:pathData="M 54,30 A 24,24 0 1,1 53.9,30" />
+
+    <!-- Teleprompter Reflection Glass Lines (Cyan Glow) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M 42,47 L 66,47" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M 45,54 L 63,54" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M 48,61 L 60,61" />
+
+    <!-- Live Recording Dot (Top Right) -->
+    <path
+        android:fillColor="#EF4444"
+        android:pathData="M 76,28 A 6,6 0 1,1 75.9,28" />
+
+    <!-- White Glint in Record Dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 75,27 A 2,2 0 1,1 74.9,27" />
+
+    <!-- Flash sensor dot (Top Left) -->
+    <path
+        android:fillColor="#64748B"
+        android:pathData="M 32,28 A 3,3 0 1,1 31.9,28" />
+</vector>

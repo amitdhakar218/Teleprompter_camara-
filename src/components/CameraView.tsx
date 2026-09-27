@@ -317,18 +317,18 @@ export const CameraView: React.FC<CameraViewProps> = ({
   const shouldMirror = facingMode === 'user' && mirrorVideo;
 
   // Visual scale:
-  // If hardware zoom is handling zoomLevel >= 1, visual scale is 1.
-  // When zoomLevel < 1 (0.1x to 0.9x wide), CSS scale scales down smoothly.
-  // If hardware zoom is not supported, CSS scale scales directly according to zoomLevel.
+  // CRITICAL: Video MUST NEVER shrink below 1.0x (full frame viewport)!
+  // 1.0x fills the full screen 100%. Zooming increases to 1.1x, 1.2x, 2.0x, 3.0x.
+  const effectiveZoom = Math.max(1.0, zoomLevel);
   const visualScale = hasHardwareZoom && zoomLevel >= (capabilities.min || 1)
     ? 1
-    : zoomLevel;
+    : effectiveZoom;
 
   return (
     <div className="relative w-full h-full bg-black overflow-hidden select-none flex items-center justify-center p-0">
       {/* Video Framing Box for 9:16 or 1:1 or 16:9 */}
       <div className={`relative overflow-hidden bg-black flex items-center justify-center ${getAspectRatioClasses()}`}>
-        {/* Real Video Element (Full body visible, high clarity, no forced cropped zoom) */}
+        {/* Real Video Element (Full screen cover, high clarity, never shrinks) */}
         <video
           ref={videoRef}
           autoPlay
@@ -341,9 +341,9 @@ export const CameraView: React.FC<CameraViewProps> = ({
           }}
         />
 
-        {/* Framing watermark label */}
+        {/* Clean Framing indicator badge */}
         <div className="absolute bottom-3 left-3 pointer-events-none px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm text-[10px] font-mono text-white/70">
-          {aspectRatio} · {resolution.toUpperCase()} · {zoomLevel.toFixed(1)}x
+          {aspectRatio} · {resolution.toUpperCase()} · {effectiveZoom.toFixed(1)}x
         </div>
       </div>
 
@@ -367,8 +367,8 @@ export const CameraView: React.FC<CameraViewProps> = ({
         </div>
       )}
 
-      {/* Viewport HUD indicators (Recording, Audio Mic Level, Zoom Badge) */}
-      <div className="absolute top-4 left-4 z-20 flex items-center gap-3">
+      {/* Viewport HUD indicators (Recording, Audio Mic Level, Camera Switch) */}
+      <div className="absolute top-4 left-4 z-20 flex items-center gap-2.5">
         {/* Audio Mic Level Bar */}
         <div 
           onClick={onToggleMute}
@@ -393,88 +393,71 @@ export const CameraView: React.FC<CameraViewProps> = ({
           </span>
         </div>
 
-        {/* Current Camera Mode Indicator */}
+        {/* Current Camera Mode Switch Indicator */}
         <button
           onClick={onFacingModeToggle}
           title={language === 'hi' ? 'कैमरा बदलें (Front / Back)' : 'Switch Front/Back Camera'}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/80 active:scale-95 transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/80 active:scale-95 transition-all cursor-pointer shadow-md"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span className="capitalize">{facingMode === 'user' ? (language === 'hi' ? 'फ्रंट कैमरा' : 'Front') : (language === 'hi' ? 'बैक कैमरा' : 'Rear')}</span>
+          <RefreshCw className="w-3.5 h-3.5 text-rose-400" />
+          <span className="font-medium text-xs">
+            {facingMode === 'user' 
+              ? (language === 'hi' ? 'फ्रंट' : 'Front') 
+              : (language === 'hi' ? 'बैक' : 'Rear')}
+          </span>
         </button>
       </div>
 
-      {/* Zoom HUD Floating Pill (Right Side) with interactive Slider & Presets */}
-      <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-1.5">
-        <div className="flex items-center bg-black/70 backdrop-blur-md border border-white/15 rounded-full px-2 py-1 text-xs text-white font-mono shadow-lg">
+      {/* Clean Modern Zoom HUD (Right Side) - Minimalist, Pure Icons, No Cluttered Buttons */}
+      <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-2">
+        <div className="flex items-center bg-black/75 backdrop-blur-md border border-white/15 rounded-full px-1.5 py-1 text-xs text-white font-mono shadow-xl">
           <button
-            onClick={() => onZoomChange(Math.max(0.1, +(zoomLevel - 0.1).toFixed(1)))}
-            disabled={zoomLevel <= 0.1}
-            className="p-1 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer active:scale-90 transition-transform"
-            title={language === 'hi' ? 'ज़ूम कम करें (0.1x तक)' : 'Zoom Out (down to 0.1x)'}
+            onClick={() => onZoomChange(Math.max(1.0, +(zoomLevel - 0.1).toFixed(1)))}
+            disabled={zoomLevel <= 1.0}
+            className="p-1 hover:text-white disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer active:scale-90 transition-transform"
+            title="Zoom Out (-0.1)"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
           
           <button
-            onClick={() => setShowZoomSlider(prev => !prev)}
-            className="px-2 font-semibold tabular-nums min-w-[42px] text-center text-rose-400 hover:text-rose-300 cursor-pointer"
-            title={language === 'hi' ? 'ज़ूम स्लाइडर खोलें / बंद करें' : 'Click to adjust Zoom slider'}
+            onClick={() => {
+              // Tapping toggles between 1.0x (full view) and 2.0x (close-up) like native camera
+              onZoomChange(Math.abs(zoomLevel - 1.0) < 0.15 ? 2.0 : 1.0);
+            }}
+            className="px-2 font-bold tabular-nums min-w-[38px] text-center text-rose-400 hover:text-rose-300 cursor-pointer text-xs"
+            title="Tap to toggle 1x / 2x"
           >
-            {zoomLevel.toFixed(1)}x
+            {effectiveZoom.toFixed(1)}x
           </button>
 
           <button
-            onClick={() => onZoomChange(Math.min(4.0, +(zoomLevel + 0.1).toFixed(1)))}
-            disabled={zoomLevel >= 4.0}
-            className="p-1 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer active:scale-90 transition-transform"
-            title={language === 'hi' ? 'ज़ूम बढ़ाएँ (0.1 स्टेप)' : 'Zoom In (+0.1)'}
+            onClick={() => onZoomChange(Math.min(3.0, +(zoomLevel + 0.1).toFixed(1)))}
+            disabled={zoomLevel >= 3.0}
+            className="p-1 hover:text-white disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer active:scale-90 transition-transform"
+            title="Zoom In (+0.1)"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Quick Zoom Presets Bar */}
-        <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-1.5 py-0.5 text-[10px] text-white font-mono shadow-md">
-          {[0.1, 0.5, 1.0, 2.0].map((preset) => (
+        {/* Minimalist 1x and 2x quick switch icons */}
+        <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/10 rounded-full p-0.5 text-[11px] text-white font-mono shadow-md">
+          {[1.0, 2.0].map((preset) => (
             <button
               key={preset}
               onClick={() => onZoomChange(preset)}
-              className={`px-1.5 py-0.5 rounded-full transition-all cursor-pointer ${
-                Math.abs(zoomLevel - preset) < 0.05
-                  ? 'bg-rose-600 text-white font-bold shadow'
+              className={`w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer font-bold ${
+                Math.abs(zoomLevel - preset) < 0.15
+                  ? 'bg-rose-600 text-white shadow'
                   : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
-              title={preset === 0.1 ? '0.1x Wide Angle (फुल बॉडी)' : `${preset}x Zoom`}
+              title={`${preset}x Zoom`}
             >
-              {preset === 0.1 ? '0.1x' : `${preset}x`}
+              {preset}x
             </button>
           ))}
         </div>
-
-        {/* Interactive Floating Zoom Slider Popover (0.1 to 4.0 in 0.1 increments) */}
-        {showZoomSlider && (
-          <div className="w-48 bg-slate-900/95 backdrop-blur-xl border border-white/15 rounded-2xl p-2.5 shadow-2xl flex flex-col gap-2 mt-1 animate-in fade-in zoom-in-95 duration-100">
-            <div className="flex items-center justify-between text-[11px] text-slate-300">
-              <span>{language === 'hi' ? 'कस्टम ज़ूम:' : 'Custom Zoom:'}</span>
-              <span className="font-mono font-bold text-rose-400">{zoomLevel.toFixed(1)}x</span>
-            </div>
-            <input
-              type="range"
-              min="0.1"
-              max="4.0"
-              step="0.1"
-              value={zoomLevel}
-              onChange={(e) => onZoomChange(parseFloat(e.target.value))}
-              className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
-            />
-            <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-              <span>0.1x (Wide)</span>
-              <span>1.0x</span>
-              <span>4.0x</span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

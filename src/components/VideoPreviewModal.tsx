@@ -1,6 +1,7 @@
 import React from 'react';
 import { RecordedVideo } from '../types';
-import { X, Download, RotateCcw, CheckCircle2, ShieldCheck, Film, Share2 } from 'lucide-react';
+import { X, Download, RotateCcw, CheckCircle2, ShieldCheck, Film, Share2, Loader2 } from 'lucide-react';
+import { saveVideoToPhoneStorage, shareVideoToApps } from '../utils/nativeStorage';
 
 interface VideoPreviewModalProps {
   video: RecordedVideo | null;
@@ -26,60 +27,46 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
 
   const [savedSuccess, setSavedSuccess] = React.useState<boolean>(false);
   const [successText, setSuccessText] = React.useState<string>('');
+  const [isSaving, setIsSaving] = React.useState<boolean>(false);
 
-  // 1. Direct Download to Mobile Phone Storage (Downloads / Gallery)
-  const handleDirectDownload = () => {
-    const ext = video.blob.type.includes('mp4') ? 'mp4' : 'webm';
-    const filename = `Camera_Video_${video.timestamp}.${ext}`;
-
-    const a = document.createElement('a');
-    a.href = video.url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-    }, 1500);
-
-    setSuccessText(
-      language === 'hi'
-        ? 'वीडियो आपके मोबाइल स्टोरेज (Downloads फ़ोल्डर) में सेव हो रही है!'
-        : 'Video is downloading directly into your phone storage (Downloads)!'
-    );
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 5000);
+  // 1. Direct Save to Mobile Phone Storage (MediaStore / Gallery / Downloads)
+  const handleDirectDownload = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const res = await saveVideoToPhoneStorage(video.blob, video.timestamp);
+      setSuccessText(
+        language === 'hi'
+          ? (res.isNative
+              ? '✓ वीडियो आपके फ़ोन की Gallery और Movies फ़ोल्डर में सुरक्षित रूप से सेव हो गई!'
+              : '✓ वीडियो आपके मोबाइल के Downloads फ़ोल्डर में डाउनलोड हो गई!')
+          : res.message
+      );
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 5000);
+    } catch (e: any) {
+      console.error('Save failed:', e);
+      setSuccessText(
+        language === 'hi'
+          ? 'त्रुटि: ' + (e?.message || 'वीडियो सेव नहीं हो सकी')
+          : 'Failed to save video: ' + (e?.message || 'Unknown error')
+      );
+      setSavedSuccess(true);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // 2. Share via Android Share Sheet to Photos / WhatsApp / Google Drive
+  // 2. Share via Android Share Sheet to WhatsApp / Drive / Photos / Files
   const handleShare = async () => {
-    const ext = video.blob.type.includes('mp4') ? 'mp4' : 'webm';
-    const filename = `Camera_Video_${video.timestamp}.${ext}`;
-
-    if (navigator.canShare) {
-      try {
-        const file = new File([video.blob], filename, { type: video.blob.type });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'Camera Recording',
-            text: 'Save video or send to apps',
-          });
-          setSuccessText(
-            language === 'hi'
-              ? 'वीडियो सफलतापूर्वक शेयर / सेव हो गई!'
-              : 'Video successfully shared / saved!'
-          );
-          setSavedSuccess(true);
-          setTimeout(() => setSavedSuccess(false), 4000);
-          return;
-        }
-      } catch (e) {
-        console.warn('Share API fallback', e);
-      }
+    try {
+      const res = await shareVideoToApps(video.blob, video.timestamp);
+      setSuccessText(language === 'hi' ? 'शेयरिंग मेन्यू खुल गया है!' : res.message);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 4000);
+    } catch (e) {
+      console.warn('Share error', e);
     }
-
-    // Fallback if sharing is cancelled or not supported
-    handleDirectDownload();
   };
 
   return (
@@ -179,10 +166,19 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
             {/* Direct Save to Mobile Storage Button */}
             <button
               onClick={handleDirectDownload}
-              className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-950/50 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+              disabled={isSaving}
+              className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-950/50 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
             >
-              <Download className="w-4 h-4" />
-              <span>{language === 'hi' ? 'फ़ोन स्टोरेज में सेव करें (Download)' : 'Save to Mobile Storage'}</span>
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              <span>
+                {isSaving
+                  ? (language === 'hi' ? 'सेव हो रहा है...' : 'Saving...')
+                  : (language === 'hi' ? 'गैलरी / स्टोरेज में सेव करें' : 'Save to Gallery / Storage')}
+              </span>
             </button>
           </div>
         </div>
