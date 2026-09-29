@@ -145,12 +145,12 @@ export default function App() {
         }
       }
 
-      // Set bitrate based on selected resolution for crystal clear video recording
-      let videoBitsPerSecond = 8_000_000; // 8 Mbps default for 1080p
+      // Bitrate optimized for butter-smooth mobile recording without dropping frames or camera lag
+      let videoBitsPerSecond = 3_500_000; // 3.5 Mbps for crystal-clear 1080p without lag
       if (prompterSettings.videoResolution === '4k') {
-        videoBitsPerSecond = 20_000_000; // 20 Mbps for 4K
+        videoBitsPerSecond = 8_000_000; // 8 Mbps for 4K
       } else if (prompterSettings.videoResolution === '720p') {
-        videoBitsPerSecond = 4_000_000; // 4 Mbps for 720p
+        videoBitsPerSecond = 2_000_000; // 2 Mbps for 720p
       }
 
       const recorderOptions: MediaRecorderOptions = {
