@@ -8,6 +8,7 @@ import { VideoPreviewModal } from './components/VideoPreviewModal';
 import { VideoGalleryModal } from './components/VideoGalleryModal';
 import { AndroidProjectViewer } from './components/AndroidProjectViewer';
 import { saveVideoToGallery } from './utils/videoGalleryStorage';
+import { saveVideoToPhoneStorage } from './utils/nativeStorage';
 import { DEFAULT_SCRIPTS } from './data/defaultScripts';
 import { 
   RecordingStatus, 
@@ -200,21 +201,10 @@ export default function App() {
           timestamp,
         }).catch((err) => console.warn('Auto gallery save error:', err));
 
-        // 2. Automatically trigger device download attempt
-        try {
-          const ext = (selectedMime && selectedMime.includes('mp4')) ? 'mp4' : 'webm';
-          const filename = `Camera_Video_${timestamp}.${ext}`;
-          const downloadAnchor = document.createElement('a');
-          downloadAnchor.href = videoUrl;
-          downloadAnchor.download = filename;
-          document.body.appendChild(downloadAnchor);
-          downloadAnchor.click();
-          setTimeout(() => {
-            document.body.removeChild(downloadAnchor);
-          }, 1500);
-        } catch (autoSaveErr) {
-          console.warn('Auto download trigger warning:', autoSaveErr);
-        }
+        // 2. Automatically save the finished recording to Android Gallery / Phone Storage
+        saveVideoToPhoneStorage(fullBlob, timestamp).catch((autoSaveErr) => {
+          console.warn('Auto phone storage save warning:', autoSaveErr);
+        });
 
         setIsVideoPreviewOpen(true);
         setRecordingStatus('idle');
