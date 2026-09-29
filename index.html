@@ -14,6 +14,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      /* Keep the live camera preview at natural framing instead of cropping it. */
+      video.w-full.h-full.object-cover {
+        object-fit: contain !important;
+        background: #000;
+      }
+    </style>
   </head>
   <body class="bg-slate-950 text-slate-100 antialiased overflow-x-hidden selection:bg-rose-500 selection:text-white" dir="ltr">
     <div id="root"></div>
