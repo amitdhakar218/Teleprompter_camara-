@@ -18,10 +18,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Install NPM Dependencies
-        run: npm ci || npm install --legacy-peer-deps
+        run: npm install --legacy-peer-deps
 
       - name: Build Web Assets
         run: npm run build
@@ -34,9 +33,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
